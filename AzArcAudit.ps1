@@ -353,9 +353,9 @@ for ($i = 0; $i -lt $arcMachines.Count; $i++) {
         $completed = Get-Job -State Completed
         if ($completed) {
             foreach ($completedJob in $completed) {
-                $results = Receive-Job -Job $completedJob -Wait -WriteEvents -Verbose:$VerbosePreference
+                $results = Receive-Job -Job $completedJob -Wait
                 foreach ($result in $results) {
-                    if ($result) {
+                    if ($result -and -not ($result -is [System.Management.Automation.JobStateEventArgs])) {
                         [void]$processedMachines.Add($result)
                     }
                 }
@@ -381,12 +381,11 @@ Wait-Job -Job $jobs | Out-Null
 # Process any remaining jobs
 foreach ($job in $jobs) {
     if (Get-Job -Id $job.Id -ErrorAction SilentlyContinue) {
-        $result = Receive-Job -Job $job -Wait -WriteEvents -Verbose:$VerbosePreference
-        if ($result) {
-            [void]$processedMachines.Add($result)
-        } else {
-            Write-Warning "No results received from job for machine"
-            Write-Verbose -Message "Error: $($job.Exception.Message)"
+        $results = Receive-Job -Job $job -Wait
+        foreach ($result in $results) {
+            if ($result -and -not ($result -is [System.Management.Automation.JobStateEventArgs])) {
+                [void]$processedMachines.Add($result)
+            }
         }
         Remove-Job -Job $job -ErrorAction SilentlyContinue
     }
